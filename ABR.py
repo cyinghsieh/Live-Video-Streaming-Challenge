@@ -53,33 +53,33 @@ class Algorithm:
             self.reset()
         else:
             throughput = S_send_data_size[-1] / S_time_interval[-1]
-            # for i in range(3, -1, -1):
-            #     if(S_buffer_size[-1] > BIT_RATE[i] * 1000 / throughput):
-            #         bit_rate = i
-            #         break
+            for i in range(3, -1, -1):
+                if(S_buffer_size[-1] > BIT_RATE[i] * 1000 / throughput):
+                    bit_rate = i
+                    break
 
             # if(S_buffer_size[-1] > self.last_bitrate * 1000 / throughput):
             #     bit_rate = self.last_bitrate
             # else:
-            print(S_buffer_size[-50:])
-            print(download_id)
+            # print(S_buffer_size[-50:])
+            # print(download_id)
             
-            if(download_id > 100):
-                print(k)
+            # if(download_id > 100):
+            #     print(k)
 
-            for i in range(0, 4):
-                period = BIT_RATE[i] * 1000 * S_chunk_len[-1] / throughput
-                future_buffer = max( S_buffer_size[-1] + S_chunk_len[-1] - period ,0)
+            # for i in range(0, 4):
+            #     period = BIT_RATE[i] * 1000 * S_chunk_len[-1] / throughput
+            #     future_buffer = max( S_buffer_size[-1] + S_chunk_len[-1] - period ,0)
 
-                # print(cdn_newest_id, download_id)
-                # unit transformation byte -> secs
-                frame_len = sum(cdn_has_frame[i])/ (BIT_RATE[i] * 1000)
-                frame_len /= (cdn_newest_id - download_id + 1)
-                cdn_cumualte = (cdn_newest_id - self.cdn_latest)*frame_len/period
-                future_cdn = max((cdn_newest_id - download_id)*frame_len + cdn_cumualte*period - S_chunk_len[-1],0)
-                if(future_buffer + future_cdn == 0):
-                    bit_rate = i
-                    break
+            #     # print(cdn_newest_id, download_id)
+            #     # unit transformation byte -> secs
+            #     frame_len = sum(cdn_has_frame[i])/ (BIT_RATE[i] * 1000)
+            #     frame_len /= (cdn_newest_id - download_id + 1)
+            #     cdn_cumualte = (cdn_newest_id - self.cdn_latest)*frame_len/period
+            #     future_cdn = max((cdn_newest_id - download_id)*frame_len + cdn_cumualte*period - S_chunk_len[-1],0)
+            #     if(future_buffer + future_cdn == 0):
+            #         bit_rate = i
+            #         break
 
         #print(bit_rate)
         self.last_bitrate = bit_rate
