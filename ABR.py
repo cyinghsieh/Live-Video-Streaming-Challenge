@@ -5,7 +5,7 @@ TARGET_BUFFER = [0.5 , 1.0]
 BIT_RATE = [500.0,850.0,1200.0,1850.0]
 
 # BITRATE_CONTROL, PLAYBACK_CONTROL, FRAME_DROP
-optimization = (False, False, True) 
+optimization = (False, True, True) 
 
 class Algorithm:
     def __init__(self):
