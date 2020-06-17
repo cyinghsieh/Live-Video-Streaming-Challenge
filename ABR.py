@@ -10,8 +10,10 @@ optimization = (False, True, True)
 class Algorithm:
     def __init__(self):
     # fill your self params
-        self.buffer_size = 0
-        self.last_bitrate = 0
+        self.last_predict = []
+        self.last_bitrate = [3]
+        self.last_actual = []
+        self.bitrate_diff = 1
         self.cdn_latest = 0
         self.cdn_last_id = -1
 
@@ -21,9 +23,42 @@ class Algorithm:
         return self.get_params()
 
     def reset(self):
-        self.last_bitrate = 0
+        self.last_predict = []
+        self.last_bitrate = [3]
+        self.last_actual = []
+        self.bitrate_diff = 1
         self.cdn_latest = 0
         self.cdn_last_id = -1
+    
+    def predict_bitrate(self, last_actual, current_bitrate):
+        previous_bitrate = last_actual * BIT_RATE[current_bitrate] / BIT_RATE[self.last_bitrate[-1]]
+        self.last_actual.append(previous_bitrate)
+
+        sample_num = 15
+        # count_max = self.last_bitrate.count(0)
+        # count_min = self.last_bitrate.count(3)
+        count_max = 25
+        count_min = 4
+
+        SC_slow = 2 / (count_max + 1)
+        SC_fast = 2 / (count_min + 1)
+
+        if(len(self.last_actual) <= sample_num):
+            predict = np.average(self.last_actual)
+        else:
+            self.bitrate_diff = 1
+            for idx in range(-1, -11, -1):
+                self.bitrate_diff += abs(self.last_actual[idx] - self.last_actual[idx-1])
+            ER = abs(self.last_actual[-1] - self.last_actual[-1 * sample_num]) / self.bitrate_diff
+            SC = (ER * (SC_fast - SC_slow) + SC_slow) ** 2
+            
+            predict = (1 - SC) * self.last_predict[-1] + SC * previous_bitrate
+            
+        #print(predict)
+                
+        self.last_predict.append(predict)
+
+        return predict
 
     def playback(self, buffer_occupy):
         # after rounding 0.5 / 2 = 0.2
@@ -60,6 +95,12 @@ class Algorithm:
         # If you choose BBA
 
         BITRATE_CONTROL, PLAYBACK_CONTROL, FRAME_DROP = optimization        
+        # playback control
+        target_buffer, play_rate = self.playback(S_buffer_size[-1])
+
+        # negative number of frames in GOP
+        frame_num = self.cdn_last_id - download_id        
+        bit_rate = 0
 
         if PLAYBACK_CONTROL:
             target_buffer, play_rate = self.playback(S_buffer_size[-1])
@@ -75,45 +116,35 @@ class Algorithm:
                 self.reset()
             else:
                 throughput = np.sum(S_send_data_size[-1]) / np.sum(S_time_interval[-1])
-                # print(throughput)
-                #throughput = np.average(S_send_data_size[frame_num:]) / np.average(S_time_interval[frame_num:])
-                # print(throughput)
-                for i in range(2, -1, -1):
-                    if(S_buffer_size[-1] > BIT_RATE[i] * 1000 / throughput):
-                        bit_rate = i+1
-                        break
+                #throughput = np.sum(S_send_data_size[frame_num:]) / np.sum(S_time_interval[frame_num:])
 
-            # print(S_chunk_len[frame_num:])
-            #print(download_id)
-            
-            # if(download_id > 1000):
-            #     print(k)
+                encode = np.sum(S_send_data_size[frame_num:]) / np.sum(S_chunk_len[frame_num:]) 
+                #encode = np.sum(S_send_data_size[-1]) / np.sum(S_chunk_len[-1])                 
+   
+        
+                for i in range(3, -1, -1):
+                    #actual_bitrate = self.predict_bitrate(encode, i)
+                    period = BIT_RATE[i] * 1000 * np.sum(S_chunk_len[frame_num:]) / throughput
+                    buffer_occupancy = S_buffer_size[-1] + np.sum(S_chunk_len[frame_num:]) - play_rate * period
 
-            # for i in range(1, 4):
-            #     period = BIT_RATE[i] * 1000 * np.sum(S_chunk_len[frame_num:]) / throughput
-            #     buffer_occupancy = S_buffer_size[-1] + np.sum(S_chunk_len[frame_num:]) - play_rate * period
-            #     buffer_occupancy = max( buffer_occupancy, 0)
+                    cdn_cumualte = (cdn_newest_id - self.cdn_latest)*S_chunk_len[-1]/np.sum(S_time_interval[frame_num:])
+                    factor = 1
+                    cdn_latency = (cdn_newest_id - download_id)*S_chunk_len[-1] + factor*cdn_cumualte*period - np.sum(S_chunk_len[frame_num:])
+                    
+                    # print(buffer_occupancy, cdn_latency)
+                    if(buffer_occupancy >= 0.6 or cdn_cumualte >= 2.5):
+                        bit_rate = i
+                        break        
 
-            #     # unit transformation byte -> secs
-            #     frame_len = np.sum(cdn_has_frame[i])/ (BIT_RATE[i] * 1000)
-            #     frame_len /= (cdn_newest_id - download_id + 1)
-            #     cdn_cumualte = (cdn_newest_id - self.cdn_latest)*frame_len/period
-            #     cdn_latency = (cdn_newest_id - download_id)*frame_len + cdn_cumualte*period - np.sum(S_chunk_len[frame_num:])
-            #     cdn_latency = max(cdn_latency, 0)
-            #     if(buffer_occupancy + cdn_latency == 0):
-            #         bit_rate = i
-            #         break        
         if FRAME_DROP:
             latency_limit = self.frame_drop(bit_rate, S_chunk_len[-1], S_end_delay[-1])
         else:
             latency_limit = 3
         #print(latency_limit)
 
-        #print(bit_rate)
-        self.last_bitrate = bit_rate
+        self.last_bitrate.append(bit_rate)
         self.cdn_latest = cdn_newest_id
         self.cdn_last_id = download_id
-        # latency_limit = 3
 
         return bit_rate, target_buffer, latency_limit
 
