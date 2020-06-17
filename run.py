@@ -10,6 +10,8 @@ import time as tm
 import ABR
 import os
 
+import pandas as pd
+
 def test(user_id):
 
     # -- Configuration variables --
@@ -103,6 +105,9 @@ def test(user_id):
     S_skip_time = [0] * past_frame_num
     # params setting
     call_time_sum = 0 
+
+    rewards = []
+    avg_times = []
     while True:
 
         reward_frame = 0
@@ -200,6 +205,9 @@ def test(user_id):
             
         if end_of_video:
             print("network traceID, network_reward, avg_running_time", trace_count, reward_all, call_time_sum/cnt)
+            rewards.append(reward_all)
+            avg_times.append(call_time_sum/cnt)
+
             reward_all_sum += reward_all
             run_time += call_time_sum / cnt
             if trace_count >= len(all_file_names):
@@ -227,6 +235,8 @@ def test(user_id):
             
         reward_all += reward_frame
 
+    df = pd.DataFrame({'rewards': rewards, 'average execute time': avg_times})
+    df.to_csv('./results/output.csv', index=False)
     return [reward_all_sum / trace_count, run_time / trace_count]
 
 a = test("aaa")

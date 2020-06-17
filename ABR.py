@@ -3,6 +3,10 @@ import numpy as np
 #NN_MODEL = "./submit/results/nn_model_ep_18200.ckpt" # model path settings
 TARGET_BUFFER = [0.5 , 1.0]
 BIT_RATE = [500.0,850.0,1200.0,1850.0]
+
+# BITRATE_CONTROL, PLAYBACK_CONTROL, FRAME_DROP
+optimization = (False, False, True) 
+
 class Algorithm:
     def __init__(self):
     # fill your self params
@@ -54,23 +58,30 @@ class Algorithm:
     #Define your al
     def run(self, time, S_time_interval, S_send_data_size, S_chunk_len, S_rebuf, S_buffer_size, S_play_time_len,S_end_delay, S_decision_flag, S_buffer_flag,S_cdn_flag,S_skip_time, end_of_video, cdn_newest_id,download_id,cdn_has_frame,IntialVars):
         # If you choose BBA
-        target_buffer, play_rate = self.playback(S_buffer_size[-1])
 
-        # negative number of frames in GOP
-        frame_num = self.cdn_last_id - download_id
-        bit_rate = 0
+        BITRATE_CONTROL, PLAYBACK_CONTROL, FRAME_DROP = optimization        
 
-        if(end_of_video):
-            self.reset()
+        if PLAYBACK_CONTROL:
+            target_buffer, play_rate = self.playback(S_buffer_size[-1])
         else:
-            throughput = np.sum(S_send_data_size[-1]) / np.sum(S_time_interval[-1])
-            # print(throughput)
-            #throughput = np.average(S_send_data_size[frame_num:]) / np.average(S_time_interval[frame_num:])
-            # print(throughput)
-            for i in range(2, -1, -1):
-                if(S_buffer_size[-1] > BIT_RATE[i] * 1000 / throughput):
-                    bit_rate = i+1
-                    break
+            target_buffer, play_rate = 0, 1
+
+        bit_rate = 0
+        if BITRATE_CONTROL:
+            # negative number of frames in GOP
+            frame_num = self.cdn_last_id - download_id
+            
+            if(end_of_video):
+                self.reset()
+            else:
+                throughput = np.sum(S_send_data_size[-1]) / np.sum(S_time_interval[-1])
+                # print(throughput)
+                #throughput = np.average(S_send_data_size[frame_num:]) / np.average(S_time_interval[frame_num:])
+                # print(throughput)
+                for i in range(2, -1, -1):
+                    if(S_buffer_size[-1] > BIT_RATE[i] * 1000 / throughput):
+                        bit_rate = i+1
+                        break
 
             # print(S_chunk_len[frame_num:])
             #print(download_id)
@@ -92,7 +103,10 @@ class Algorithm:
             #     if(buffer_occupancy + cdn_latency == 0):
             #         bit_rate = i
             #         break        
-        latency_limit = self.frame_drop(bit_rate, S_chunk_len[-1], S_end_delay[-1])
+        if FRAME_DROP:
+            latency_limit = self.frame_drop(bit_rate, S_chunk_len[-1], S_end_delay[-1])
+        else:
+            latency_limit = 3
         #print(latency_limit)
 
         #print(bit_rate)
