@@ -34,10 +34,10 @@ def test(user_id):
     # Edit these variables to configure the simulator
 
     # Change which set of network trace to use: 'fixed' 'low' 'medium' 'high'
-    NETWORK_TRACE = 'fixed'
+    NETWORK_TRACE = 'high'
 
     # Change which set of video trace to use.
-    VIDEO_TRACE = 'room'
+    VIDEO_TRACE = 'AsianCup_China_Uzbekistan'
 
     # Turn on and off logging.  Set to 'True' to create log files.
     # Set to 'False' would speed up the simulator.
@@ -212,10 +212,12 @@ def test(user_id):
         if decision_flag or end_of_video:
             # reward formate = play_time * BIT_RATE - 4.3 * rebuf - 1.2 * end_delay
             reward_frame += -1 * SMOOTH_PENALTY * (abs(BIT_RATE[bit_rate] - BIT_RATE[last_bit_rate]) / 1000)
+            # print(-1 * SMOOTH_PENALTY * (abs(BIT_RATE[bit_rate] - BIT_RATE[last_bit_rate]) / 1000))
             # last_bit_rate
+            switch_meter.update(-1 * SMOOTH_PENALTY * (abs(BIT_RATE[bit_rate] - BIT_RATE[last_bit_rate]) / 1000))
             last_bit_rate = bit_rate
 
-            switch_meter.update(-1 * SMOOTH_PENALTY * (abs(BIT_RATE[bit_rate] - BIT_RATE[last_bit_rate]) / 1000))
+            
 
             # ----------------- Your Algorithm ---------------------
             # which part is the algorithm part ,the buffer based , 
@@ -268,6 +270,7 @@ def test(user_id):
             latency_all_meter.update(latency_meter.sum)
             skip_all_meter.update(skip_meter.sum)
             switch_all_meter.update(switch_meter.sum)
+            # print(switch_meter.sum)
 
             quality_meter.reset()
             rebuf_meter.reset()
