@@ -37,7 +37,7 @@ def test(user_id):
     NETWORK_TRACE = 'fixed'
 
     # Change which set of video trace to use.
-    VIDEO_TRACE = 'AsianCup_China_Uzbekistan'
+    VIDEO_TRACE = 'room'
 
     # Turn on and off logging.  Set to 'True' to create log files.
     # Set to 'False' would speed up the simulator.
