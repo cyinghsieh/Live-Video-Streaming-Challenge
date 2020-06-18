@@ -12,6 +12,22 @@ import os
 
 import pandas as pd
 
+class AverageMeter(object):
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+    def update(self, val, num=1):
+        self.val = val
+        self.sum += val * num
+        self.count += num
+        self.avg = self.sum / self.count
+
 def test(user_id):
 
     # -- Configuration variables --
@@ -108,6 +124,19 @@ def test(user_id):
 
     rewards = []
     avg_times = []
+
+    quality_meter = AverageMeter()
+    rebuf_meter = AverageMeter()
+    latency_meter = AverageMeter()
+    skip_meter = AverageMeter()
+    switch_meter = AverageMeter()
+
+    quality_all_meter = AverageMeter()
+    rebuf_all_meter = AverageMeter()
+    latency_all_meter = AverageMeter()
+    skip_all_meter = AverageMeter()
+    switch_all_meter = AverageMeter()
+
     while True:
 
         reward_frame = 0
@@ -167,13 +196,26 @@ def test(user_id):
             
         if not cdn_flag:
             reward_frame = frame_time_len * float(BIT_RATE[bit_rate]) / 1000  - REBUF_PENALTY * rebuf - LANTENCY_PENALTY  * end_delay - SKIP_PENALTY * skip_frame_time_len 
+            quality_meter.update(frame_time_len * float(BIT_RATE[bit_rate]) / 1000)
+            rebuf_meter.update(- REBUF_PENALTY * rebuf)
+            latency_meter.update(- LANTENCY_PENALTY  * end_delay)
+            skip_meter.update(- SKIP_PENALTY * skip_frame_time_len)
+
         else:
             reward_frame = -(REBUF_PENALTY * rebuf)
+            # quality_meter.update(0)
+            rebuf_meter.update(- REBUF_PENALTY * rebuf)
+            # latency_meter.update(0)
+            # skip_meter.update(0)
+
+
         if decision_flag or end_of_video:
             # reward formate = play_time * BIT_RATE - 4.3 * rebuf - 1.2 * end_delay
             reward_frame += -1 * SMOOTH_PENALTY * (abs(BIT_RATE[bit_rate] - BIT_RATE[last_bit_rate]) / 1000)
             # last_bit_rate
             last_bit_rate = bit_rate
+
+            switch_meter.update(-1 * SMOOTH_PENALTY * (abs(BIT_RATE[bit_rate] - BIT_RATE[last_bit_rate]) / 1000))
 
             # ----------------- Your Algorithm ---------------------
             # which part is the algorithm part ,the buffer based , 
@@ -221,6 +263,19 @@ def test(user_id):
             bit_rate = 0
             target_buffer = 0
 
+            quality_all_meter.update(quality_meter.sum)
+            rebuf_all_meter.update(rebuf_meter.sum)
+            latency_all_meter.update(latency_meter.sum)
+            skip_all_meter.update(skip_meter.sum)
+            switch_all_meter.update(switch_meter.sum)
+
+            quality_meter.reset()
+            rebuf_meter.reset()
+            latency_meter.reset()
+            skip_meter.reset()
+            switch_meter.reset()
+
+
             S_time_interval = [0] * past_frame_num
             S_send_data_size = [0] * past_frame_num
             S_chunk_len = [0] * past_frame_num
@@ -234,9 +289,13 @@ def test(user_id):
             S_cdn_flag = [0] * past_frame_num
             
         reward_all += reward_frame
+        
 
-    df = pd.DataFrame({'rewards': rewards, 'average execute time': avg_times})
-    df.to_csv('./results/output.csv', index=False)
+    log_df = pd.DataFrame({'rewards': rewards, 'average execute time': avg_times})
+    log_df.to_csv('./results/output.csv', index=False)
+
+    metric_df = pd.DataFrame({'quality': [quality_all_meter.avg], 'rebuf': [rebuf_all_meter.avg], 'latency': [latency_all_meter.avg], 'skip': [skip_all_meter.avg], 'switch': [switch_all_meter.avg]})
+    metric_df.to_csv('./results/metrics.csv', index=False)
     return [reward_all_sum / trace_count, run_time / trace_count]
 
 a = test("aaa")
