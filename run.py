@@ -34,7 +34,7 @@ def test(user_id):
     # Edit these variables to configure the simulator
 
     # Change which set of network trace to use: 'fixed' 'low' 'medium' 'high'
-    NETWORK_TRACE = 'fixed'
+    NETWORK_TRACE = 'high'
 
     # Change which set of video trace to use.
     VIDEO_TRACE = 'AsianCup_China_Uzbekistan'
