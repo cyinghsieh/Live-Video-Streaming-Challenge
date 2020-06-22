@@ -34,7 +34,7 @@ def test(user_id):
     # Edit these variables to configure the simulator
 
     # Change which set of network trace to use: 'fixed' 'low' 'medium' 'high'
-    NETWORK_TRACE = 'high'
+    NETWORK_TRACE = 'fixed'
 
     # Change which set of video trace to use.
     VIDEO_TRACE = 'AsianCup_China_Uzbekistan'
@@ -215,6 +215,7 @@ def test(user_id):
             # print(-1 * SMOOTH_PENALTY * (abs(BIT_RATE[bit_rate] - BIT_RATE[last_bit_rate]) / 1000))
             # last_bit_rate
             switch_meter.update(-1 * SMOOTH_PENALTY * (abs(BIT_RATE[bit_rate] - BIT_RATE[last_bit_rate]) / 1000))
+            # print(bit_rate, last_bit_rate)
             last_bit_rate = bit_rate
 
             
@@ -254,6 +255,13 @@ def test(user_id):
 
             reward_all_sum += reward_all
             run_time += call_time_sum / cnt
+
+            quality_all_meter.update(quality_meter.sum)
+            rebuf_all_meter.update(rebuf_meter.sum)
+            latency_all_meter.update(latency_meter.sum)
+            skip_all_meter.update(skip_meter.sum)
+            switch_all_meter.update(switch_meter.sum)
+
             if trace_count >= len(all_file_names):
                 break
             trace_count += 1
@@ -265,11 +273,7 @@ def test(user_id):
             bit_rate = 0
             target_buffer = 0
 
-            quality_all_meter.update(quality_meter.sum)
-            rebuf_all_meter.update(rebuf_meter.sum)
-            latency_all_meter.update(latency_meter.sum)
-            skip_all_meter.update(skip_meter.sum)
-            switch_all_meter.update(switch_meter.sum)
+            
             # print(switch_meter.sum)
 
             quality_meter.reset()
